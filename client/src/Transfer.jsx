@@ -1,7 +1,9 @@
 import { useState } from "react";
 import server from "./server";
+import Transfer from "./classes/Transfer";
 
-function Transfer({ address, setBalance }) {
+
+function Tx({ address, setBalance, privateKey, nonce, setNonce }) {
   const [sendAmount, setSendAmount] = useState("");
   const [recipient, setRecipient] = useState("");
 
@@ -10,15 +12,20 @@ function Transfer({ address, setBalance }) {
   async function transfer(evt) {
     evt.preventDefault();
 
+    let transferAmount = new Transfer(address, recipient, parseInt(sendAmount), nonce)
+    transferAmount.signTx(privateKey)
+
+    let data = {...transferAmount}
+
     try {
       const {
-        data: { balance },
-      } = await server.post(`send`, {
-        sender: address,
-        amount: parseInt(sendAmount),
-        recipient,
-      });
+        data: { balance, nonce },
+      } = await server.post(`send`, 
+        data
+      );
       setBalance(balance);
+      setNonce(nonce)
+
     } catch (ex) {
       alert(ex.response.data.message);
     }
@@ -51,4 +58,4 @@ function Transfer({ address, setBalance }) {
   );
 }
 
-export default Transfer;
+export default Tx;

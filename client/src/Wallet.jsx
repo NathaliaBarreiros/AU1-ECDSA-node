@@ -1,23 +1,44 @@
 import server from "./server";
 import * as secp from 'ethereum-cryptography/secp256k1'
+import { getHexPublicKey } from "./classes/PublicKeyUtils";
+
 import { toHex } from 'ethereum-cryptography/utils'
 
-function Wallet({ address, setAddress, balance, setBalance, privateKey, setPrivateKey }) {
+function Wallet({
+  privateKey,
+  setPrivateKey,
+  address,
+  setAddress,
+  balance,
+  setBalance,
+  walletError,
+  setWalletError,
+  nonce,
+  setNonce }) {
   async function onChange(evt) {
-    const privateKey = evt.target.value;
-    setPrivateKey(privateKey);
+    setPrivateKey(evt.target.value);
 
-    const address = toHex(secp.getPublicKey(privateKey))
-    setAddress(address)
+    let validPrivateKey = secp.utils.isValidPrivateKey(evt.target.value)
 
-    if (address) {
-      const {
-        data: { balance },
-      } = await server.get(`balance/${address}`);
-      setBalance(balance);
+    if(validPrivateKey){
+      const hexAddress = getHexPublicKey(evt.target.value)
+      setAddress(hexAddress)
+
+      if(hexAddress){
+        const {
+          data: {balance, nonce}
+        } = await server.get(`balance/${hexAddress}`)
+        setBalance(balance)
+        setNonce(nonce)
+      } else {
+        setBalance(0)
+      }
+      setWalletError("")
     } else {
-      setBalance(0);
+      setAddress("")
+      setWalletError("Invalid Private Key")
     }
+
   }
 
   return (
@@ -25,13 +46,19 @@ function Wallet({ address, setAddress, balance, setBalance, privateKey, setPriva
       <h1>Your Wallet</h1>
 
       <label>
-          Private Key
+          Wallet Private Key
         <input placeholder="Type in a private key: " value={privateKey} onChange={onChange}></input>
       </label>
+      {walletError && <div className="error">Wallet Error: {walletError}</div>}
 
-      <div>
-        Address: {address.slice(0,10)}...
-      </div>
+      {address ? 
+        [
+          <div className="address">Address: {address.slice(0,20)}...</div>,
+          // <div className="address"> 
+          // Transaction #: {nonce}</div>
+        ] 
+        : null
+      }
 
       <div className="balance">Balance: {balance}</div>
     </div>
